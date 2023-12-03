@@ -17,8 +17,14 @@ public class PlayerController : MonoBehaviour {
     [SerializeField] private Animator _anim;
     [SerializeField] private SpriteRenderer _sp;
     private FrameInputs _inputs;
+    private bool interactPressed = false;
+    private bool submitPressed = false;
+    private static PlayerController instance;
 
     private void Update() {
+
+        if (DialogueManager.GetInstance().dialogueIsPlaying) {return;}
+
         GatherInputs();
 
         HandleGrounding();
@@ -36,8 +42,64 @@ public class PlayerController : MonoBehaviour {
 
     private void Awake()
     {
+        if (instance != null)
+        {
+            Debug.LogError("Found more than one Input Manager in the scene.");
+        }
+        instance = this;
         input = new PlayerInputActions();
     }
+    public static PlayerController GetInstance() 
+    {
+        return instance;
+    }
+
+    #region Dialogue
+
+    public void InteractButtonPressed(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            interactPressed = true;
+        }
+        else if (context.canceled)
+        {
+            interactPressed = false;
+        } 
+    }
+
+    public void SubmitPressed(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            submitPressed = true;
+        }
+        else if (context.canceled)
+        {
+            submitPressed = false;
+        } 
+    }
+
+    public bool GetInteractPressed() 
+    {
+        bool result = interactPressed;
+        interactPressed = false;
+        return result;
+    }
+
+    public bool GetSubmitPressed() 
+    {
+        bool result = submitPressed;
+        submitPressed = false;
+        return result;
+    }
+    
+    public void RegisterSubmitPressed() 
+    {
+        submitPressed = false;
+    }
+
+    #endregion
 
     #region Inputs
 
