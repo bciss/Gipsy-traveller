@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using Random = UnityEngine.Random;
 
 /// <summary>
@@ -33,20 +34,59 @@ public class PlayerController : MonoBehaviour {
         //HandleDashing();
     }
 
+    private void Awake()
+    {
+        input = new PlayerInputActions();
+    }
+
     #region Inputs
 
+    private  PlayerInputActions input = null;
     private bool _facingLeft;
 
+    private void OnEnable()
+    {
+        input.Enable();
+        input.Player.Move.performed += OnMouvementPerformed;
+        input.Player.Move.canceled += OnMouvementCanceled;
+    }
+    private void OnDisable()
+    {
+        input.Disable();
+        input.Player.Move.performed -= OnMouvementPerformed;
+        input.Player.Move.canceled -= OnMouvementCanceled;
+    }
+
+    private void OnMouvementPerformed(InputAction.CallbackContext value)
+    {
+        _inputs.rawValues = value.ReadValue<Vector2>();
+        _inputs.values = value.ReadValue<Vector2>();
+    }
+
+    private void OnMouvementCanceled(InputAction.CallbackContext value)
+    {
+        _inputs.rawValues = Vector2.zero;
+        _inputs.values = Vector2.zero;
+    }
     private void GatherInputs() {
-        _inputs.RawX = (int) Input.GetAxisRaw("Horizontal");
-        _inputs.RawY = (int) Input.GetAxisRaw("Vertical");
-        _inputs.X = Input.GetAxis("Horizontal");
-        _inputs.Y = Input.GetAxis("Vertical");
+        // _inputs.RawX = (int) Input.GetAxisRaw("Horizontal");
+        // _inputs.RawY = (int) Input.GetAxisRaw("Vertical");
+        // _inputs.X = Input.GetAxis("Horizontal");
+        // _inputs.Y = Input.GetAxis("Vertical");
 
 //        _anim.SetInteger("RawY", _inputs.RawY);
 
-        _facingLeft = _inputs.RawX != 1 && (_inputs.RawX == -1 || _facingLeft);
+        _facingLeft = _inputs.rawValues.x != 1 && (_inputs.rawValues.x == -1 || _facingLeft);
         if (!_grabbing) SetFacingDirection(_facingLeft); // Don't turn while grabbing the wall
+
+        if (input.Player.Menu.triggered)
+        {
+            GameManager.Instance.Pause();
+        }
+        if(input.Player.Inventory.triggered)
+        {
+            GameManager.Instance.Inventory();
+        }
     }
 
     private void SetFacingDirection(bool left) {
@@ -93,8 +133,8 @@ public class PlayerController : MonoBehaviour {
         // Wall detection
         _isAgainstLeftWall = Physics.OverlapSphereNonAlloc(transform.position + new Vector3(-_wallCheckOffset, 0), _wallCheckRadius, _leftWall, _groundMask) > 0;
         _isAgainstRightWall = Physics.OverlapSphereNonAlloc(transform.position + new Vector3(_wallCheckOffset, 0), _wallCheckRadius, _rightWall, _groundMask) > 0;
-        _pushingLeftWall = _isAgainstLeftWall && _inputs.X < 0;
-        _pushingRightWall = _isAgainstRightWall && _inputs.X > 0;
+        _pushingLeftWall = _isAgainstLeftWall && _inputs.values.x < 0;
+        _pushingRightWall = _isAgainstRightWall && _inputs.values.x > 0;
     }
 
     private void DrawGrounderGizmos() {
@@ -123,19 +163,19 @@ public class PlayerController : MonoBehaviour {
         // This can be done using just X & Y input as they lerp to max values, but this gives greater control over velocity acceleration
         var acceleration = IsGrounded ? _acceleration : _acceleration * 0.5f;
 
-        if (Input.GetKey(KeyCode.LeftArrow)) {
-            if (_rb.velocity.x > 0) _inputs.X = 0; // Immediate stop and turn. Just feels better
-            _inputs.X = Mathf.MoveTowards(_inputs.X, -1, acceleration * Time.deltaTime);
+        if (_inputs.rawValues.x < 0) {
+            if (_rb.velocity.x > 0) _inputs.values.x = 0; // Immediate stop and turn. Just feels better
+            _inputs.values.x = Mathf.MoveTowards(_inputs.values.x, -1, acceleration * Time.deltaTime);
         }
-        else if (Input.GetKey(KeyCode.RightArrow)) {
-            if (_rb.velocity.x < 0) _inputs.X = 0;
-            _inputs.X = Mathf.MoveTowards(_inputs.X, 1, acceleration * Time.deltaTime);
+        else if (_inputs.rawValues.x > 0) {
+            if (_rb.velocity.x < 0) _inputs.values.x = 0;
+            _inputs.values.x = Mathf.MoveTowards(_inputs.values.x, 1, acceleration * Time.deltaTime);
         }
         else {
-            _inputs.X = Mathf.MoveTowards(_inputs.X, 0, acceleration * 2 * Time.deltaTime);
+            _inputs.values.x = Mathf.MoveTowards(_inputs.values.x, 0, acceleration * 2 * Time.deltaTime);
         }
 
-        var idealVel = new Vector3(_inputs.X * _walkSpeed, _rb.velocity.y);
+        var idealVel = new Vector3(_inputs.values.x * _walkSpeed, _rb.velocity.y);
         // _currentMovementLerpSpeed should be set to something crazy high to be effectively instant. But slowed down after a wall jump and slowly released
         _rb.velocity = Vector3.MoveTowards(_rb.velocity, idealVel, _currentMovementLerpSpeed * Time.deltaTime);
 
@@ -162,7 +202,7 @@ public class PlayerController : MonoBehaviour {
 
     private void HandleJumping() {
         if (_dashing) return;
-        if (Input.GetKeyDown(KeyCode.Space)) {
+        if (input.Player.Jump.triggered) {
             if (_grabbing || !IsGrounded && (_isAgainstLeftWall || _isAgainstRightWall)) {
                 _timeLastWallJumped = Time.time;
                 _currentMovementLerpSpeed = _wallJumpMovementLerp;
@@ -183,7 +223,7 @@ public class PlayerController : MonoBehaviour {
         }
 
         // Fall faster and allow small jumps. _jumpVelocityFalloff is the point at which we start adding extra gravity. Using 0 causes floating
-        if (_rb.velocity.y < _jumpVelocityFalloff || _rb.velocity.y > 0 && !Input.GetKey(KeyCode.C))
+        if (_rb.velocity.y < _jumpVelocityFalloff || _rb.velocity.y > 0 && !input.Player.Jump.triggered)
             _rb.velocity += _fallMultiplier * Physics.gravity.y * Vector3.up * Time.deltaTime;
     }
 
@@ -229,27 +269,27 @@ public class PlayerController : MonoBehaviour {
     [Header("Wall Grab")] [SerializeField] private ParticleSystem _wallGrabParticles;
     private bool _grabbing;
 
-    private void HandleWallGrab() {
-        // I added wallJumpLock but I honestly can't remember why and I'm too scared to remove it...
-        var grabbing = (_isAgainstLeftWall || _isAgainstRightWall) && Input.GetKey(KeyCode.Z) && Time.time > _timeLastWallJumped + _wallJumpLock;
+    // private void HandleWallGrab() {
+    //     // I added wallJumpLock but I honestly can't remember why and I'm too scared to remove it...
+    //     var grabbing = (_isAgainstLeftWall || _isAgainstRightWall) && Input.GetKey(KeyCode.Z) && Time.time > _timeLastWallJumped + _wallJumpLock;
 
-        _rb.useGravity = !_grabbing;
-        if (grabbing && !_grabbing) {
-            _grabbing = true;
-            _wallGrabParticles.transform.position = transform.position + new Vector3(_pushingLeftWall ? -_wallCheckOffset : _wallCheckOffset, 0);
-            _wallGrabParticles.Play();
-            SetFacingDirection(_isAgainstLeftWall);
-        }
-        else if (!grabbing && _grabbing) {
-            _grabbing = false;
-            _wallGrabParticles.Stop();
-            Debug.Log("stopped");
-        }
+    //     _rb.useGravity = !_grabbing;
+    //     if (grabbing && !_grabbing) {
+    //         _grabbing = true;
+    //         _wallGrabParticles.transform.position = transform.position + new Vector3(_pushingLeftWall ? -_wallCheckOffset : _wallCheckOffset, 0);
+    //         _wallGrabParticles.Play();
+    //         SetFacingDirection(_isAgainstLeftWall);
+    //     }
+    //     else if (!grabbing && _grabbing) {
+    //         _grabbing = false;
+    //         _wallGrabParticles.Stop();
+    //         Debug.Log("stopped");
+    //     }
 
-        if (_grabbing) _rb.velocity = new Vector3(0, _inputs.RawY * _slideSpeed * (_inputs.RawY < 0 ? 1 : 0.8f));
+    //     if (_grabbing) _rb.velocity = new Vector3(0, _inputs.rawValues.y * _slideSpeed * (_inputs.rawValues.y < 0 ? 1 : 0.8f));
 
-        // _anim.SetBool("Climbing", _wallSliding || _grabbing);
-    }
+    //     // _anim.SetBool("Climbing", _wallSliding || _grabbing);
+    // }
 
     #endregion
 
@@ -268,36 +308,36 @@ public class PlayerController : MonoBehaviour {
     private float _timeStartedDash;
     private Vector3 _dashDir;
 
-    private void HandleDashing() {
-        if (Input.GetKeyDown(KeyCode.X) && !_hasDashed) {
-            _dashDir = new Vector3(_inputs.RawX, _inputs.RawY).normalized;
-            if (_dashDir == Vector3.zero) _dashDir = _facingLeft ? Vector3.left : Vector3.right;
-            _dashRing.up = _dashDir;
-            _dashParticles.Play();
-            _dashing = true;
-            _hasDashed = true;
-            _timeStartedDash = Time.time;
-            _rb.useGravity = false;
-            _dashVisual.Play();
-            //PlayRandomClip(_dashClips);
-            OnStartDashing?.Invoke();
-        }
+    // private void HandleDashing() {
+    //     if (Input.GetKeyDown(KeyCode.X) && !_hasDashed) {
+    //         _dashDir = new Vector3(_inputs.rawValues.x, _inputs.rawValues.y).normalized;
+    //         if (_dashDir == Vector3.zero) _dashDir = _facingLeft ? Vector3.left : Vector3.right;
+    //         _dashRing.up = _dashDir;
+    //         _dashParticles.Play();
+    //         _dashing = true;
+    //         _hasDashed = true;
+    //         _timeStartedDash = Time.time;
+    //         _rb.useGravity = false;
+    //         _dashVisual.Play();
+    //         //PlayRandomClip(_dashClips);
+    //         OnStartDashing?.Invoke();
+    //     }
 
-        if (_dashing) {
-            _rb.velocity = _dashDir * _dashSpeed;
+    //     if (_dashing) {
+    //         _rb.velocity = _dashDir * _dashSpeed;
 
-            if (Time.time >= _timeStartedDash + _dashLength) {
-                _dashParticles.Stop();
-                _dashing = false;
-                // Clamp the velocity so they don't keep shooting off
-                _rb.velocity = new Vector3(_rb.velocity.x, _rb.velocity.y > 3 ? 3 : _rb.velocity.y);
-                _rb.useGravity = true;
-                if (IsGrounded) _hasDashed = false;
-                _dashVisual.Stop();
-                OnStopDashing?.Invoke();
-            }
-        }
-    }
+    //         if (Time.time >= _timeStartedDash + _dashLength) {
+    //             _dashParticles.Stop();
+    //             _dashing = false;
+    //             // Clamp the velocity so they don't keep shooting off
+    //             _rb.velocity = new Vector3(_rb.velocity.x, _rb.velocity.y > 3 ? 3 : _rb.velocity.y);
+    //             _rb.useGravity = true;
+    //             if (IsGrounded) _hasDashed = false;
+    //             _dashVisual.Stop();
+    //             OnStopDashing?.Invoke();
+    //         }
+    //     }
+    // }
 
     #endregion
 
@@ -339,5 +379,8 @@ public class PlayerController : MonoBehaviour {
     private struct FrameInputs {
         public float X, Y;
         public int RawX, RawY;
+
+        public Vector2 rawValues;
+        public Vector2 values;
     }
 }
