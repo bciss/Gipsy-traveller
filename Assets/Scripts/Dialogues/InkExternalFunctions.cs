@@ -12,7 +12,7 @@ public class InkExternalFunctions
 
     public void Unbind(Story story) 
     {
-        story.UnbindExternalFunction("playEmote");
+        // story.UnbindExternalFunction("playEmote");
     }
 
     public void PlayEmote(string emoteName, Animator emoteAnimator)
