@@ -14,7 +14,7 @@ public class MyPickup : MonoBehaviour
         Item = GetComponent<PGISlotItem>();
     }
 
-    void OnMouseDown()
+    public void PutItInInventory()
     {
         if(DefaultInventory != null && Item != null)
             DefaultInventory.Pickup(Item);

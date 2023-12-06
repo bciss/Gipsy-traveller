@@ -9,5 +9,6 @@ public class MyItemType : MonoBehaviour
 
 public enum ItemType {
     weapon,
-    shield
+    shield,
+    coins
 }

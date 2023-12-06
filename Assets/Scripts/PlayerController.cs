@@ -44,7 +44,7 @@ public class PlayerController : MonoBehaviour {
     {
         if (instance != null)
         {
-            Debug.LogError("Found more than one Input Manager in the scene.");
+            Debug.LogError("Found more than one PlayerController in the scene.");
         }
         instance = this;
         input = new PlayerInputActions();
