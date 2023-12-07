@@ -366,7 +366,7 @@
                 {
                     "name": "",
                     "id": "7a43d637-16d7-4482-824c-01d57a6860c4",
-                    "path": "*/{Submit}",
+                    "path": "<Keyboard>/anyKey",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse;Gamepad;Touch;Joystick;XR",
@@ -902,7 +902,7 @@
                 {
                     "name": "",
                     "id": "84084e69-9f6d-4d37-8a68-1fc8a4b371de",
-                    "path": "*/{Submit}",
+                    "path": "<Keyboard>/anyKey",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse;Gamepad;Touch;Joystick;XR",
