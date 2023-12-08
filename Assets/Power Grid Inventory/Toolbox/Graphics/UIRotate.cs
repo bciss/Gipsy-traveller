@@ -28,7 +28,7 @@ namespace Toolbox.Graphics
             set
             {
                 _EulerAngles = value;
-                this.OnValidate();
+                // OnValidate(); // changed form this.OnValidate();
             }
         }
         [SerializeField]
@@ -44,7 +44,7 @@ namespace Toolbox.Graphics
             set
             {
                 _Scale = value;
-                this.OnValidate();
+                // OnValidate(); // changed form this.OnValidate();
             }
         }
         [SerializeField]
